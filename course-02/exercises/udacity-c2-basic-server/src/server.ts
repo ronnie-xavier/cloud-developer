@@ -4,26 +4,26 @@ import bodyParser from 'body-parser';
 import { Car, cars as cars_list } from './cars';
 
 (async () => {
-  let cars:Car[]  = cars_list;
+  let cars = cars_list;
 
   //Create an express applicaiton
-  const app = express(); 
+  const app = express();
   //default port to listen
-  const port = 8082; 
-  
-  //use middleware so post bodies 
+  const port = 8082;
+
+  //use middleware so post bodies
   //are accessable as req.body.{{variable}}
-  app.use(bodyParser.json()); 
+  app.use(bodyParser.json());
 
   // Root URI call
   app.get( "/", ( req: Request, res: Response ) => {
     res.status(200).send("Welcome to the Cloud!");
   } );
 
-  // Get a greeting to a specific person 
+  // Get a greeting to a specific person
   // to demonstrate routing parameters
   // > try it {{host}}/persons/:the_name
-  app.get( "/persons/:name", 
+  app.get( "/persons/:name",
     ( req: Request, res: Response ) => {
       let { name } = req.params;
 
@@ -52,12 +52,10 @@ import { Car, cars as cars_list } from './cars';
 
   // Post a greeting to a specific person
   // to demonstrate req.body
-  // > try it by posting {"name": "the_name" } as 
+  // > try it by posting {"name": "the_name" } as
   // an application/json body to {{host}}/persons
-  app.post( "/persons", 
-    async ( req: Request, res: Response ) => {
-
-      const { name } = req.body;
+  app.post( "/persons", ( req: Request, res: Response ) => {
+      const { name, temp } = req.body;
 
       if ( !name ) {
         return res.status(400)
@@ -65,18 +63,61 @@ import { Car, cars as cars_list } from './cars';
       }
 
       return res.status(200)
-                .send(`Welcome to the Cloud, ${name}!`);
+                .send(`Welcome to the Cloud, ${name}! and a warm hello to dd${temp}`);
   } );
 
-  // @TODO Add an endpoint to GET a list of cars
-  // it should be filterable by make with a query paramater
+  //An endpoint to GET a list of cars
+  // it is  filterable by make with a query paramater: http://localhost:8082/cars/?make=honda
+  app.get("/cars", (req: Request, res: Response) => {
+      const { make } = req.query;
 
-  // @TODO Add an endpoint to get a specific car
+      if (!make) {
+          return res.status(200).send(cars);
+      } else {
+          const cars_of_specific_make = cars.filter(car => car.make === make);
+          console.log(`make requested is ${make}`)
+          return res.status(200).send(cars_of_specific_make);
+      }
+  } );
+
+  // An endpoint to get a specific car
   // it should require id
   // it should fail gracefully if no matching car is found
+  app.get("/cars/:id", (req: Request, res: Response) => {
+      let { id } = req.params;
+      console.log(`id from client is ${id}`);
 
-  /// @TODO Add an endpoint to post a new car to our list
+      id = Number(id);
+      console.log(`id requested is ${id}`);
+
+      if (id === undefined || isNaN(id)) {
+          return res.status(400).send(`id is mandatory`);
+      }
+
+      for (const car of cars) {
+          if (car.id === id) {
+              return res.status(200).send(car);
+          }
+      }
+      return res.status(404).send(`car with id ${id} not found`);
+  });
+
+  /// An endpoint to post a new car to our list
   // it should require id, type, model, and cost
+  app.post("/cars", (req: Request, res: Response) => {
+      const car = req.body;
+      const { id, type, model, cost, make } = car;
+
+      if(id === undefined || isNaN(id) || !type || !model || !cost || !make) {
+          return res.status(400).send(`please ensure id type make model and cost are present`)
+      }
+      car.id = Number(car.id);
+      car.cost = Number(car.cost);
+
+      cars.push(car);
+
+      return res.status(200).send(cars);
+  });
 
   // Start the Server
   app.listen( port, () => {
